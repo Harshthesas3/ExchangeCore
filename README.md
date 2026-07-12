@@ -70,6 +70,8 @@ TUI (FTXUI)  ──►  API (Events + Listeners)  ──►  Core Engine  ──
 - **Order Entry Modals** — F1 Buy / F2 Sell with Limit and Market order types
 - **Cancel Orders Modal** — F3 to view and cancel any active user order
 - **Professional Dark Theme** — Custom RGB color palette, no rainbow colors
+- <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/afb2d9b1-9217-4594-8c9e-3dee32da8cdf" />
+
 
 ### Performance
 - Lock-free atomic counters for statistics (zero mutex contention in hot path)
