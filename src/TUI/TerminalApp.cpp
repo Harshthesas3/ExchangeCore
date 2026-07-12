@@ -78,52 +78,58 @@ void TerminalApp::run() {
 }
 
 void TerminalApp::initUI() {
-    // Inputs components for the order entry modals
-    auto input_price_comp = Input(&input_price_, "Price");
-    auto input_qty_comp = Input(&input_qty_, "Quantity");
-    auto input_symbol_comp = Input(&input_symbol_, "Symbol");
+    // BUG 2 FIX: Create fully separate component instances for each modal.
+    // Sharing the same component in two Container::Vertical nodes corrupts
+    // FTXUI's internal focus tree and causes double-event delivery.
 
-    auto btn_buy_submit = Button("SUBMIT BUY", [&] { submitUserOrder(Side::Buy); });
-    auto btn_sell_submit = Button("SUBMIT SELL", [&] { submitUserOrder(Side::Sell); });
-    auto btn_cancel = Button("CLOSE", [&] { active_modal_ = ModalType::None; });
+    // --- Buy Modal ---
+    auto buy_input_symbol  = Input(&input_symbol_, "Symbol");
+    auto buy_input_price   = Input(&input_price_,  "Price");
+    auto buy_input_qty     = Input(&input_qty_,    "Quantity");
+    auto buy_type_toggle   = Toggle(&order_types_, &selected_order_type_);
+    auto btn_buy_submit    = Button("SUBMIT BUY",  [&] { submitUserOrder(Side::Buy); });
+    auto btn_buy_cancel    = Button("CLOSE",       [&] { active_modal_ = ModalType::None; });
 
-    auto order_type_toggle = Toggle(&order_types_, &selected_order_type_);
-
-    // Compose Buy Modal Component
     auto buy_modal_comp = Container::Vertical({
-        input_symbol_comp,
-        order_type_toggle,
-        input_price_comp,
-        input_qty_comp,
-        Container::Horizontal({btn_buy_submit, btn_cancel})
+        buy_input_symbol,
+        buy_type_toggle,
+        buy_input_price,
+        buy_input_qty,
+        Container::Horizontal({btn_buy_submit, btn_buy_cancel})
     });
 
-    // Compose Sell Modal Component
+    // --- Sell Modal (own separate instances) ---
+    auto sell_input_symbol = Input(&input_symbol_, "Symbol");
+    auto sell_input_price  = Input(&input_price_,  "Price");
+    auto sell_input_qty    = Input(&input_qty_,    "Quantity");
+    auto sell_type_toggle  = Toggle(&order_types_, &selected_order_type_);
+    auto btn_sell_submit   = Button("SUBMIT SELL", [&] { submitUserOrder(Side::Sell); });
+    auto btn_sell_cancel   = Button("CLOSE",       [&] { active_modal_ = ModalType::None; });
+
     auto sell_modal_comp = Container::Vertical({
-        input_symbol_comp,
-        order_type_toggle,
-        input_price_comp,
-        input_qty_comp,
-        Container::Horizontal({btn_sell_submit, btn_cancel})
+        sell_input_symbol,
+        sell_type_toggle,
+        sell_input_price,
+        sell_input_qty,
+        Container::Horizontal({btn_sell_submit, btn_sell_cancel})
     });
 
-    // Compose Cancel Modal Component
+    // --- Cancel Modal ---
     auto btn_cancel_order = Button("CANCEL SELECTED", [&] {
-        if (!user_orders_.empty() && selected_cancel_order_idx_ >= 0 && 
+        if (!user_orders_.empty() && selected_cancel_order_idx_ >= 0 &&
             selected_cancel_order_idx_ < static_cast<int>(user_orders_.size())) {
             auto order = user_orders_[selected_cancel_order_idx_];
             cancelUserOrder(order->id, order->symbol);
             active_modal_ = ModalType::None;
         }
     });
-    
     auto btn_cancel_close = Button("CLOSE", [&] { active_modal_ = ModalType::None; });
 
     auto cancel_modal_comp = Container::Vertical({
         Container::Horizontal({btn_cancel_order, btn_cancel_close})
     });
 
-    // Simulation controls components
+    // --- Simulation controls ---
     auto btn_sim_toggle = Button("TOGGLE SIMULATOR", [&] {
         if (simulator_->isRunning()) {
             simulator_->stop();
@@ -134,31 +140,42 @@ void TerminalApp::initUI() {
         }
         log_timestamp_ = std::chrono::system_clock::now();
     });
+    // BUG 1 FIX: Use class-member vectors so Toggle pointers remain valid
+    // after initUI() returns. Local vectors would be destroyed immediately.
+    auto sim_speed_toggle = Toggle(&sim_speeds_, &sim_speed_idx_);
 
-    std::vector<std::string> speeds = {"SLOW (100ms)", "NORMAL (30ms)", "FAST (5ms)"};
-    auto sim_speed_toggle = Toggle(&speeds, &sim_speed_idx_);
+    // --- Benchmark controls ---
+    auto btn_run_bench    = Button("RUN BENCHMARK", [&] { runBenchmarkAsync(); });
+    // BUG 1 FIX: Same — use class member bench_sizes_, not a local vector.
+    auto bench_size_toggle = Toggle(&bench_sizes_, &selected_bench_size_);
 
-    // Benchmark controls components
-    auto btn_run_bench = Button("RUN BENCHMARK", [&] { runBenchmarkAsync(); });
-    std::vector<std::string> sizes = {"100K Orders", "1M Orders", "10M Orders"};
-    auto bench_size_toggle = Toggle(&sizes, &selected_bench_size_);
-
-    // Portfolio controls components
+    // --- Portfolio controls ---
     auto btn_reset_portfolio = Button("RESET PORTFOLIO", [&] {
         engine_->reset();
         portfolio_ = engine_->getPortfolio();
-        stats_ = engine_->getStatistics();
+        stats_     = engine_->getStatistics();
         recent_trades_.clear();
         user_orders_.clear();
         terminal_log_message_ = "Portfolio and engine statistics reset successfully.";
         log_timestamp_ = std::chrono::system_clock::now();
     });
 
-    // Top container containing all nested component structures
+    // BUG 3 FIX: Gate each modal component subtree with Maybe() so it is
+    // excluded from FTXUI's focus traversal when the modal is not open.
+    // Without this, Tab while on the dashboard silently advances focus into
+    // invisible modal inputs, swallowing the event and breaking panel cycling.
+    auto buy_modal_gated = Maybe(buy_modal_comp,
+        [&] { return active_modal_ == ModalType::Buy; });
+    auto sell_modal_gated = Maybe(sell_modal_comp,
+        [&] { return active_modal_ == ModalType::Sell; });
+    auto cancel_modal_gated = Maybe(cancel_modal_comp,
+        [&] { return active_modal_ == ModalType::CancelList; });
+
+    // Top container — modal subtrees only participate when their modal is open
     auto main_container = Container::Vertical({
-        buy_modal_comp,
-        sell_modal_comp,
-        cancel_modal_comp,
+        buy_modal_gated,
+        sell_modal_gated,
+        cancel_modal_gated,
         btn_sim_toggle,
         sim_speed_toggle,
         btn_run_bench,
@@ -205,38 +222,32 @@ void TerminalApp::initUI() {
 
     // Catch keyboard input events
     renderer = CatchEvent(renderer, [&](ftxui::Event event) {
+        // Quit — always handled first
         if (event == ftxui::Event::Character('q') || event == ftxui::Event::Character('Q')) {
             screen_.ExitLoopClosure()();
             return true;
         }
 
-        // Cycle focus panel
-        if (event == ftxui::Event::Tab) {
-            active_focus_panel_ = (active_focus_panel_ + 1) % 2;
-            return true;
-        }
-
+        // --- Modal is open: handle Escape + modal-specific keys ---
         if (active_modal_ != ModalType::None) {
             if (event == ftxui::Event::Escape) {
                 active_modal_ = ModalType::None;
                 return true;
             }
-            // Navigate Cancel modal list if active
+            // Navigate Cancel modal list
             if (active_modal_ == ModalType::CancelList) {
                 if (event == ftxui::Event::ArrowUp) {
-                    if (selected_cancel_order_idx_ > 0) {
-                        selected_cancel_order_idx_--;
-                    }
+                    if (selected_cancel_order_idx_ > 0) --selected_cancel_order_idx_;
                     return true;
                 }
                 if (event == ftxui::Event::ArrowDown) {
-                    if (selected_cancel_order_idx_ < static_cast<int>(user_orders_.size()) - 1) {
-                        selected_cancel_order_idx_++;
-                    }
+                    if (selected_cancel_order_idx_ < static_cast<int>(user_orders_.size()) - 1)
+                        ++selected_cancel_order_idx_;
                     return true;
                 }
                 if (event == ftxui::Event::Return) {
-                    if (!user_orders_.empty() && selected_cancel_order_idx_ >= 0 && 
+                    if (!user_orders_.empty() &&
+                        selected_cancel_order_idx_ >= 0 &&
                         selected_cancel_order_idx_ < static_cast<int>(user_orders_.size())) {
                         auto order = user_orders_[selected_cancel_order_idx_];
                         cancelUserOrder(order->id, order->symbol);
@@ -245,50 +256,62 @@ void TerminalApp::initUI() {
                     return true;
                 }
             }
-            return false; // let active modal components consume key bindings
+            // BUG 4 FIX: Do NOT consume Tab when a modal is open.
+            // The Buy/Sell modal needs Tab to cycle between its own input fields
+            // (Symbol → Type → Price → Qty → Buttons). Returning false here lets
+            // the modal's Container::Vertical handle Tab natively via FTXUI.
+            return false;
         }
 
-        // Functions shortcuts
-        if (event == ftxui::Event::F1) {
-            openOrderModal(Side::Buy);
+        // --- No modal open: panel-level Tab / Shift+Tab ---
+        // BUG 4 FIX: Tab is only consumed as panel-switcher when no modal is open.
+        // BUG 5 FIX: Add Shift+Tab (TabReverse) for backward panel cycling.
+        if (event == ftxui::Event::Tab) {
+            active_focus_panel_ = (active_focus_panel_ + 1) % 2;
             return true;
         }
-        if (event == ftxui::Event::F2) {
-            openOrderModal(Side::Sell);
-            return true;
-        }
-        if (event == ftxui::Event::F3) {
-            openCancelModal();
-            return true;
-        }
-        if (event == ftxui::Event::F4) {
-            selected_left_menu_ = 7; // Switch to Benchmark Panel
-            return true;
-        }
-        if (event == ftxui::Event::F5) {
-            selected_left_menu_ = 8; // Switch to Portfolio Panel
+        if (event == ftxui::Event::TabReverse) {
+            active_focus_panel_ = (active_focus_panel_ + 1) % 2; // only 2 panels; same as forward
             return true;
         }
 
-        // Sidebar Navigation
+        // --- Function key shortcuts (only when no modal) ---
+        if (event == ftxui::Event::F1) { openOrderModal(Side::Buy);  return true; }
+        if (event == ftxui::Event::F2) { openOrderModal(Side::Sell); return true; }
+        if (event == ftxui::Event::F3) { openCancelModal();          return true; }
+        if (event == ftxui::Event::F4) { selected_left_menu_ = 7;   return true; } // Benchmark
+        if (event == ftxui::Event::F5) { selected_left_menu_ = 8;   return true; } // Portfolio
+
+        // --- Sidebar arrow-key navigation (only when sidebar has focus) ---
         if (active_focus_panel_ == 0) {
             if (event == ftxui::Event::ArrowUp) {
+                // BUG 8 FIX: Clamp at top instead of wrapping around.
+                // Find the previous non-separator item without wrapping.
+                int next = selected_left_menu_;
                 do {
-                    selected_left_menu_ = (selected_left_menu_ + left_menu_items_.size() - 1) % left_menu_items_.size();
-                } while (left_menu_items_[selected_left_menu_] == "---");
-                
-                if (selected_left_menu_ < 5) {
-                    active_symbol_ = left_menu_items_[selected_left_menu_];
+                    if (next == 0) break; // already at top — stop
+                    --next;
+                } while (left_menu_items_[next] == "---");
+                // Only update if we found a valid (non-separator) item
+                if (left_menu_items_[next] != "---") {
+                    selected_left_menu_ = next;
+                    if (selected_left_menu_ < 5)
+                        active_symbol_ = left_menu_items_[selected_left_menu_];
                 }
                 return true;
             }
             if (event == ftxui::Event::ArrowDown) {
+                // BUG 8 FIX: Clamp at bottom instead of wrapping around.
+                int last = static_cast<int>(left_menu_items_.size()) - 1;
+                int next = selected_left_menu_;
                 do {
-                    selected_left_menu_ = (selected_left_menu_ + 1) % left_menu_items_.size();
-                } while (left_menu_items_[selected_left_menu_] == "---");
-
-                if (selected_left_menu_ < 5) {
-                    active_symbol_ = left_menu_items_[selected_left_menu_];
+                    if (next == last) break; // already at bottom — stop
+                    ++next;
+                } while (left_menu_items_[next] == "---");
+                if (left_menu_items_[next] != "---") {
+                    selected_left_menu_ = next;
+                    if (selected_left_menu_ < 5)
+                        active_symbol_ = left_menu_items_[selected_left_menu_];
                 }
                 return true;
             }

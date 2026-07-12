@@ -98,6 +98,8 @@ private:
     
     std::vector<std::string> left_menu_items_;
     std::vector<std::string> order_types_{"LIMIT", "MARKET"};
+    std::vector<std::string> sim_speeds_{"SLOW (100ms)", "NORMAL (30ms)", "FAST (5ms)"};
+    std::vector<std::string> bench_sizes_{"100K Orders", "1M Orders", "10M Orders"};
 
     ModalType active_modal_{ModalType::None};
     int selected_cancel_order_idx_{0};
