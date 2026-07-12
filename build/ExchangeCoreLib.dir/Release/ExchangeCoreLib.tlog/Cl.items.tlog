@@ -1,0 +1,7 @@
+C:\projects\ExchangeCore\src\Benchmarks\BenchmarkRunner.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\BenchmarkRunner.obj
+C:\projects\ExchangeCore\src\Core\ExchangeEngine.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\ExchangeEngine.obj
+C:\projects\ExchangeCore\src\Core\MarketSimulator.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\MarketSimulator.obj
+C:\projects\ExchangeCore\src\Core\MatchingEngine.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\MatchingEngine.obj
+C:\projects\ExchangeCore\src\Core\OrderBook.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\OrderBook.obj
+C:\projects\ExchangeCore\src\Core\Portfolio.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\Portfolio.obj
+C:\projects\ExchangeCore\src\Core\Statistics.cpp;C:\projects\ExchangeCore\build\ExchangeCoreLib.dir\Release\Statistics.obj

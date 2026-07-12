@@ -1,0 +1,3 @@
+C:/projects/ExchangeCore/build/_deps/ftxui-subbuild/CMakeFiles/ftxui-populate.dir
+C:/projects/ExchangeCore/build/_deps/ftxui-subbuild/CMakeFiles/ALL_BUILD.dir
+C:/projects/ExchangeCore/build/_deps/ftxui-subbuild/CMakeFiles/ZERO_CHECK.dir
