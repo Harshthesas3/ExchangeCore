@@ -1,0 +1,58 @@
+Start testing: Jul 13 12:25 India Standard Time
+----------------------------------------------------------
+1/1 Testing: CoreTests
+1/1 Test: CoreTests
+Command: "C:/projects/ExchangeCore/build/Release/ExchangeCoreTests.exe"
+Directory: C:/projects/ExchangeCore/build
+"CoreTests" start time: Jul 13 12:25 India Standard Time
+Output:
+----------------------------------------------------------
+Running main() from C:\projects\ExchangeCore\build\_deps\googletest-src\googletest\src\gtest_main.cc
+[==========] Running 11 tests from 4 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from OrderBookTest
+[ RUN      ] OrderBookTest.BasicInsertAndErase
+[       OK ] OrderBookTest.BasicInsertAndErase (0 ms)
+[ RUN      ] OrderBookTest.DepthCalculation
+[       OK ] OrderBookTest.DepthCalculation (0 ms)
+[----------] 2 tests from OrderBookTest (0 ms total)
+
+[----------] 6 tests from MatchingEngineTest
+[ RUN      ] MatchingEngineTest.LimitOrderFullFill
+[       OK ] MatchingEngineTest.LimitOrderFullFill (0 ms)
+[ RUN      ] MatchingEngineTest.FIFOPriority
+[       OK ] MatchingEngineTest.FIFOPriority (0 ms)
+[ RUN      ] MatchingEngineTest.PartialFillsAndResting
+[       OK ] MatchingEngineTest.PartialFillsAndResting (0 ms)
+[ RUN      ] MatchingEngineTest.MarketOrderBehavior
+[       OK ] MatchingEngineTest.MarketOrderBehavior (0 ms)
+[ RUN      ] MatchingEngineTest.CancelOrder
+[       OK ] MatchingEngineTest.CancelOrder (0 ms)
+[ RUN      ] MatchingEngineTest.ModifyOrderPriority
+[       OK ] MatchingEngineTest.ModifyOrderPriority (0 ms)
+[----------] 6 tests from MatchingEngineTest (0 ms total)
+
+[----------] 2 tests from PortfolioTest
+[ RUN      ] PortfolioTest.LedgerUpdates
+[       OK ] PortfolioTest.LedgerUpdates (0 ms)
+[ RUN      ] PortfolioTest.ShortSellingLedger
+[       OK ] PortfolioTest.ShortSellingLedger (0 ms)
+[----------] 2 tests from PortfolioTest (0 ms total)
+
+[----------] 1 test from StatisticsTest
+[ RUN      ] StatisticsTest.MathAccuracy
+[       OK ] StatisticsTest.MathAccuracy (0 ms)
+[----------] 1 test from StatisticsTest (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 11 tests from 4 test suites ran. (0 ms total)
+[  PASSED  ] 11 tests.
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"CoreTests" end time: Jul 13 12:25 India Standard Time
+"CoreTests" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Jul 13 12:25 India Standard Time
