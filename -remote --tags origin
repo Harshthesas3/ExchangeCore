@@ -1,0 +1,160 @@
+[33mcommit 282ac98ecf5382c9efa9575ace1d6b5e06558036[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;33mtag: [m[1;33mv2.0.1[m[33m, [m[1;33mtag: [m[1;33mv2.0.0[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: T Harshith Krishna Sastry <harshithsastry@gmail.com>
+Date:   Mon Jul 13 15:25:57 2026 +0530
+
+    Remove build artifacts and add .gitignore
+
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mnew file mode 100644[m
+[1mindex 0000000..9802189[m
+[1m--- /dev/null[m
+[1m+++ b/.gitignore[m
+[36m@@ -0,0 +1,33 @@[m
+[32m+[m[32m﻿# Build[m
+[32m+[m[32mbuild/[m
+[32m+[m[32mDebug/[m
+[32m+[m[32mRelease/[m
+[32m+[m[32mx64/[m
+[32m+[m
+[32m+[m[32m# Visual Studio[m
+[32m+[m[32m.vs/[m
+[32m+[m[32m*.VC.db[m
+[32m+[m[32m*.VC.opendb[m
+[32m+[m[32m*.suo[m
+[32m+[m[32m*.user[m
+[32m+[m
+[32m+[m[32m# CMake[m
+[32m+[m[32mCMakeCache.txt[m
+[32m+[m[32mCMakeFiles/[m
+[32m+[m[32mcmake_install.cmake[m
+[32m+[m
+[32m+[m[32m# Object files[m
+[32m+[m[32m*.obj[m
+[32m+[m[32m*.o[m
+[32m+[m[32m*.pdb[m
+[32m+[m[32m*.ilk[m
+[32m+[m[32m*.idb[m
+[32m+[m
+[32m+[m[32m# Executables[m
+[32m+[m[32m*.exe[m
+[32m+[m[32m*.dll[m
+[32m+[m[32m*.lib[m
+[32m+[m
+[32m+[m[32m# Testing[m
+[32m+[m[32mTesting/[m
+[32m+[m[32m*.log[m
+[1mdiff --git a/build/ALL_BUILD.vcxproj b/build/ALL_BUILD.vcxproj[m
+[1mdeleted file mode 100644[m
+[1mindex 4933f99..0000000[m
+[1m--- a/build/ALL_BUILD.vcxproj[m
+[1m+++ /dev/null[m
+[36m@@ -1,225 +0,0 @@[m
+[31m-﻿<?xml version="1.0" encoding="utf-8"?>[m
+[31m-<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">[m
+[31m-  <PropertyGroup>[m
+[31m-    <PreferredToolArchitecture>x64</PreferredToolArchitecture>[m
+[31m-  </PropertyGroup>[m
+[31m-  <PropertyGroup>[m
+[31m-    <ResolveNugetPackages>false</ResolveNugetPackages>[m
+[31m-  </PropertyGroup>[m
+[31m-  <ItemGroup Label="ProjectConfigurations">[m
+[31m-    <ProjectConfiguration Include="Debug|x64">[m
+[31m-      <Configuration>Debug</Configuration>[m
+[31m-      <Platform>x64</Platform>[m
+[31m-    </ProjectConfiguration>[m
+[31m-    <ProjectConfiguration Include="Release|x64">[m
+[31m-      <Configuration>Release</Configuration>[m
+[31m-      <Platform>x64</Platform>[m
+[31m-    </ProjectConfiguration>[m
+[31m-    <ProjectConfiguration Include="MinSizeRel|x64">[m
+[31m-      <Configuration>MinSizeRel</Configuration>[m
+[31m-      <Platform>x64</Platform>[m
+[31m-    </ProjectConfiguration>[m
+[31m-    <ProjectConfiguration Include="RelWithDebInfo|x64">[m
+[31m-      <Configuration>RelWithDebInfo</Configuration>[m
+[31m-      <Platform>x64</Platform>[m
+[31m-    </ProjectConfiguration>[m
+[31m-  </ItemGroup>[m
+[31m-  <PropertyGroup Label="Globals">[m
+[31m-    <ProjectGuid>{18058A9E-DB5F-381D-9B1C-3F83EAE670EB}</ProjectGuid>[m
+[31m-    <Keyword>Win32Proj</Keyword>[m
+[31m-    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>[m
+[31m-    <Platform>x64</Platform>[m
+[31m-    <ProjectName>ALL_BUILD</ProjectName>[m
+[31m-    <VCProjectUpgraderObjectName>NoUpgrade</VCProjectUpgraderObjectName>[m
+[31m-  </PropertyGroup>[m
+[31m-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />[m
+[31m-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">[m
+[31m-    <ConfigurationType>Utility</ConfigurationType>[m
+[31m-    <CharacterSet>MultiByte</CharacterSet>[m
+[31m-    <PlatformToolset>v143</PlatformToolset>[m
+[31m-  </PropertyGroup>[m
+[31m-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">[m
+[31m-    <ConfigurationType>Utility</ConfigurationType>[m
+[31m-    <CharacterSet>MultiByte</CharacterSet>[m
+[31m-    <PlatformToolset>v143</PlatformToolset>[m
+[31m-  </PropertyGroup>[m
+[31m-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'" Label="Configuration">[m
+[31m-    <ConfigurationType>Utility</ConfigurationType>[m
+[31m-    <CharacterSet>MultiByte</CharacterSet>[m
+[31m-    <PlatformToolset>v143</PlatformToolset>[m
+[31m-  </PropertyGroup>[m
+[31m-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'" Label="Configuration">[m
+[31m-    <ConfigurationType>Utility</ConfigurationType>[m
+[31m-    <CharacterSet>MultiByte</CharacterSet>[m
+[31m-    <PlatformToolset>v143</PlatformToolset>[m
+[31m-  </PropertyGroup>[m
+[31m-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />[m
+[31m-  <ImportGroup Label="ExtensionSettings">[m
+[31m-  </ImportGroup>[m
+[31m-  <ImportGroup Label="PropertySheets">[m
+[31m-    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />[m
+[31m-  </ImportGroup>[m
+[31m-  <PropertyGroup Label="UserMacros" />[m
+[31m-  <PropertyGroup>[m
+[31m-    <_ProjectFileVersion>10.0.20506.1</_ProjectFileVersion>[m
+[31m-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>[m
+[31m-    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>[m
+[31m-    <IntDir Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>[m
+[31m-    <IntDir Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>[m
+[31m-  </PropertyGroup>[m
+[31m-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">[m
+[31m-    <Midl>[m
+[31m-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>[m
+[31m-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>[m
+[31m-      <HeaderFileName>%(Filename).h</HeaderFileName>[m
+[31m-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>[m
+[31m-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>[m
+[31m-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>[m
+[31m-    </Midl>[m
+[31m-  </ItemDefinitionGroup>[m
+[31m-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">[m
+[31m-    <Midl>[m
+[31m-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>[m
+[31m-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>[m
+[31m-      <HeaderFileName>%(Filename).h</HeaderFileName>[m
+[31m-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>[m
+[31m-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>[m
+[31m-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>[m
+[31m-    </Midl>[m
+[31m-  </ItemDefinitionGroup>[m
+[31m-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='MinSizeRel|x64'">[m
+[31m-    <Midl>[m
+[31m-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>[m
+[31m-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>[m
+[31m-      <HeaderFileName>%(Filename).h</HeaderFileName>[m
+[31m-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>[m
+[31m-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>[m
+[31m-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>[m
+[31m-    </Midl>[m
+[31m-  </ItemDefinitionGroup>[m
+[31m-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='RelWithDebInfo|x64'">[m
+[31m-    <Midl>[m
+[31m-      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>[m
+[31m-      <OutputDirectory>$(ProjectDir)/$(IntDir)</OutputDirectory>[m
+[31m-      <HeaderFileName>%(Filename).h</HeaderFileName>[m
+[31m-      <TypeLibraryName>%(Filename).tlb</TypeLibraryName>[m
+[31m-      <InterfaceIdentifierFileName>%(Filename)_i.c</InterfaceIdentifierFileName>[m
+[31m-      <ProxyFileName>%(Filename)_p.c</ProxyFileName>[m
+[31m-    </Midl>[m
+[31m-  </Item

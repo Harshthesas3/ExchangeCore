@@ -234,6 +234,12 @@ void TerminalApp::initUI() {
                 active_modal_ = ModalType::None;
                 return true;
             }
+            // Enter submits Buy/Sell modal
+            if ((active_modal_ == ModalType::Buy || active_modal_ == ModalType::Sell) &&
+                event == ftxui::Event::Return) {
+                submitUserOrder(active_modal_ == ModalType::Buy ? Side::Buy : Side::Sell);
+                return true;
+            }
             // Navigate Cancel modal list
             if (active_modal_ == ModalType::CancelList) {
                 if (event == ftxui::Event::ArrowUp) {
@@ -271,7 +277,8 @@ void TerminalApp::initUI() {
             return true;
         }
         if (event == ftxui::Event::TabReverse) {
-            active_focus_panel_ = (active_focus_panel_ + 1) % 2; // only 2 panels; same as forward
+            const int panel_count = 2;
+            active_focus_panel_ = (active_focus_panel_ - 1 + panel_count) % panel_count;
             return true;
         }
 
