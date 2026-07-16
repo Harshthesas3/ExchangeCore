@@ -1,0 +1,77 @@
+name: ExchangeCore Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: >
+          cmake --build build
+          --config Release
+
+      - name: Run Tests
+        run: >
+          ctest
+          --test-dir build
+          -C Release
+          --output-on-failure
+
+      # Locate your executable.
+      # If your executable lives somewhere else,
+      # change this path.
+      - name: Create Release Folder
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release
+
+          Get-ChildItem build -Recurse -Filter *.exe |
+            Where-Object { $_.Name -notmatch "test|benchmark" } |
+            Copy-Item -Destination release
+
+          if (Test-Path README.md) {
+            Copy-Item README.md release
+          }
+
+          if (Test-Path LICENSE) {
+            Copy-Item LICENSE release
+          }
+
+      - name: Zip Release
+        shell: pwsh
+        run: |
+          Compress-Archive `
+            -Path release/* `
+            -DestinationPath ExchangeCore-Windows.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ExchangeCore-Windows
+          path: ExchangeCore-Windows.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ExchangeCore-Windows.zip
