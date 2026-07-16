@@ -1,4 +1,4 @@
-name: ExchangeCore Release
+name: Build ExchangeCore
 
 on:
   push:
@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
@@ -21,43 +21,30 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure CMake
-        run: >
-          cmake -B build
-          -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: >
-          cmake --build build
-          --config Release
+        run: cmake --build build --config Release
 
       - name: Run Tests
-        run: >
-          ctest
-          --test-dir build
-          -C Release
-          --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure
 
-      # Locate your executable.
-      # If your executable lives somewhere else,
-      # change this path.
       - name: Create Release Folder
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force release
 
-          Get-ChildItem build -Recurse -Filter *.exe |
-            Where-Object { $_.Name -notmatch "test|benchmark" } |
-            Copy-Item -Destination release
+          Copy-Item build/Release/ExchangeCoreApp.exe release/
 
           if (Test-Path README.md) {
-            Copy-Item README.md release
+            Copy-Item README.md release/
           }
 
           if (Test-Path LICENSE) {
-            Copy-Item LICENSE release
+            Copy-Item LICENSE release/
           }
 
-      - name: Zip Release
+      - name: Create ZIP
         shell: pwsh
         run: |
           Compress-Archive `
