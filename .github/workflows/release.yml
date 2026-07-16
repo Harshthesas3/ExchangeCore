@@ -7,10 +7,6 @@ on:
     tags:
       - "v*"
 
-  pull_request:
-    branches:
-      - main
-
   workflow_dispatch:
 
 permissions:
@@ -22,20 +18,24 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure CMake
+      - name: Debug trigger
+        shell: pwsh
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          Write-Host "Event      : ${{ github.event_name }}"
+          Write-Host "Ref        : ${{ github.ref }}"
+          Write-Host "Ref Name   : ${{ github.ref_name }}"
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: |
-          cmake --build build --config Release
+        run: cmake --build build --config Release
 
       - name: Run Tests
-        run: |
-          ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build -C Release --output-on-failure
 
       - name: Prepare Release Folder
         shell: pwsh
@@ -60,14 +60,15 @@ jobs:
             Copy-Item config release -Recurse
           }
 
-      - name: Create ZIP Package
+      - name: Create ZIP
         shell: pwsh
         run: |
           Compress-Archive `
             -Path release/* `
-            -DestinationPath ExchangeCore-Windows.zip
+            -DestinationPath ExchangeCore-Windows.zip `
+            -Force
 
-      - name: Upload Build Artifact
+      - name: Upload Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ExchangeCore-Windows
@@ -77,4 +78,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ExchangeCore-Windows.zip
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            ExchangeCore-Windows.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
