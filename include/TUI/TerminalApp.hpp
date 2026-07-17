@@ -3,6 +3,7 @@
 #include "Core/ExchangeEngine.hpp"
 #include "Core/MarketSimulator.hpp"
 #include "Core/ThreadSafeQueue.hpp"
+#include "Core/QuantArenaExporter.hpp"
 #include "API/Events.hpp"
 #include "TUI/Theme.hpp"
 
@@ -22,7 +23,8 @@ enum class ModalType {
     None,
     Buy,
     Sell,
-    CancelList
+    CancelList,
+    PostMatchSummary
 };
 
 struct UIOrderBookLevel {
@@ -59,6 +61,10 @@ private:
     void submitUserOrder(Side side);
     void cancelUserOrder(OrderID id, const std::string& symbol);
     void runBenchmarkAsync();
+    
+    void startMatchSession();
+    void endMatchSession();
+    void exportQuantArenaLog();
 
     // Render Helpers
     ftxui::Element renderHeader();
@@ -71,6 +77,15 @@ private:
 
     std::shared_ptr<ExchangeEngine> engine_;
     std::shared_ptr<MarketSimulator> simulator_;
+    std::shared_ptr<SessionManager> session_mgr_;
+    std::shared_ptr<QuantArenaExporter> exporter_;
+
+    // Screen-specific interactive components. Stored here so renderCenterPanel()
+    // can call ->Render() to embed them as live interactive widgets in each panel.
+    ftxui::Component sim_screen_comp_;
+    ftxui::Component bench_screen_comp_;
+    ftxui::Component settings_screen_comp_;
+    ftxui::Component match_screen_comp_;
 
     ThreadSafeQueue<Event> event_queue_;
     ftxui::ScreenInteractive screen_ = ftxui::ScreenInteractive::Fullscreen();
@@ -118,6 +133,13 @@ private:
 
     // Settings screen state
     int sim_speed_idx_{1}; // 0 = Slow, 1 = Normal, 2 = Fast
+
+    // QuantArena Match state
+    std::string input_match_seed_{""};
+    std::string match_error_msg_{""};
+    bool match_running_{false};
+    bool match_exported_{false};
+    std::chrono::system_clock::time_point match_end_time_;
 };
 
 } // namespace Exchange::TUI

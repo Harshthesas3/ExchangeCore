@@ -32,9 +32,11 @@ std::vector<Trade> MatchingEngine::match(const std::shared_ptr<Order>& order, Or
                 order->symbol,
                 best_ask->price, // price is determined by the resting order (best_ask)
                 match_qty,
-                std::chrono::system_clock::now(),
+                std::chrono::system_clock::now(), // Will be updated in ExchangeEngine
                 order->client_id,
-                best_ask->client_id
+                best_ask->client_id,
+                order->side,
+                order->type
             };
 
             trades.push_back(trade);
@@ -84,9 +86,11 @@ std::vector<Trade> MatchingEngine::match(const std::shared_ptr<Order>& order, Or
                 order->symbol,
                 best_bid->price, // price is determined by the resting order (best_bid)
                 match_qty,
-                std::chrono::system_clock::now(),
+                std::chrono::system_clock::now(), // Will be updated in ExchangeEngine
                 best_bid->client_id,
-                order->client_id
+                order->client_id,
+                order->side,
+                order->type
             };
 
             trades.push_back(trade);

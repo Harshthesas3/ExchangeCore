@@ -11,9 +11,11 @@
 
 namespace Exchange {
 
+class SessionManager;
+
 class MarketSimulator {
 public:
-    explicit MarketSimulator(ExchangeEngine& engine);
+    explicit MarketSimulator(ExchangeEngine& engine, std::shared_ptr<SessionManager> session_mgr = nullptr);
     ~MarketSimulator();
 
     void start();
@@ -24,6 +26,7 @@ private:
     void run();
 
     ExchangeEngine& engine_;
+    std::shared_ptr<SessionManager> session_mgr_;
     std::atomic<bool> running_{false};
     std::thread worker_thread_;
 

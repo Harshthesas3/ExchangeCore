@@ -2,12 +2,18 @@
 #include <chrono>
 #include <algorithm>
 
+#include "Core/SessionManager.hpp"
+
 namespace Exchange {
 
-ExchangeEngine::ExchangeEngine() {
+ExchangeEngine::ExchangeEngine(std::shared_ptr<SessionManager> session_mgr) : session_mgr_(std::move(session_mgr)) {
     matching_engine_ = std::make_unique<MatchingEngine>([this](const Trade& trade) {
         this->handleTradeExecution(trade);
     });
+}
+
+auto ExchangeEngine_now(std::shared_ptr<SessionManager>& sm) {
+    return sm ? sm->now() : std::chrono::system_clock::now();
 }
 
 void ExchangeEngine::addSymbol(const std::string& symbol) {
@@ -37,11 +43,24 @@ std::vector<std::string> ExchangeEngine::getSymbols() const {
 void ExchangeEngine::submitOrder(const std::shared_ptr<Order>& order) {
     if (!order) return;
 
-    auto start_time = std::chrono::steady_clock::now();
+    std::string symbol = order->symbol;
+
+    if (session_mgr_ && !session_mgr_->getConfig().has_symbol(symbol)) {
+        order->status = OrderStatus::Rejected;
+        dispatchEvent(OrderRejectedEvent{
+            order->id,
+            order->symbol,
+            "Symbol not in active universe",
+            ExchangeEngine_now(session_mgr_),
+            order->client_id
+        });
+        return;
+    }
+
+    auto start_time = ExchangeEngine_now(session_mgr_);
     stats_.recordOrderReceived();
 
     std::vector<Trade> trades;
-    std::string symbol = order->symbol;
     
     {
         std::lock_guard<std::mutex> lock(engine_mutex_);
@@ -53,7 +72,7 @@ void ExchangeEngine::submitOrder(const std::shared_ptr<Order>& order) {
                 order->id,
                 order->symbol,
                 "Unknown trading symbol",
-                std::chrono::system_clock::now(),
+                ExchangeEngine_now(session_mgr_),
                 order->client_id
             });
             return;
@@ -74,6 +93,10 @@ void ExchangeEngine::submitOrder(const std::shared_ptr<Order>& order) {
 
         // Match order
         trades = matching_engine_->match(order, book);
+        // Update trades timestamp if they use matching engine's wall-clock
+        for (auto& t : trades) {
+            t.timestamp = ExchangeEngine_now(session_mgr_);
+        }
 
         // Update stats and market data
         stats_.recordSpread(symbol, book.getSpread());
@@ -101,13 +124,13 @@ void ExchangeEngine::submitOrder(const std::shared_ptr<Order>& order) {
         stats_snap.trades_per_sec
     });
 
-    auto end_time = std::chrono::steady_clock::now();
+    auto end_time = ExchangeEngine_now(session_mgr_);
     auto latency = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     stats_.recordLatency(latency);
 }
 
 bool ExchangeEngine::cancelOrder(OrderID id, const std::string& symbol) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = ExchangeEngine_now(session_mgr_);
     bool success = false;
 
     {
@@ -123,7 +146,7 @@ bool ExchangeEngine::cancelOrder(OrderID id, const std::string& symbol) {
                     dispatchEvent(OrderCancelledEvent{
                         id,
                         symbol,
-                        std::chrono::system_clock::now(),
+                        ExchangeEngine_now(session_mgr_),
                         client_id
                     });
 
@@ -155,7 +178,7 @@ bool ExchangeEngine::cancelOrder(OrderID id, const std::string& symbol) {
             stats_snap.trades_per_sec
         });
 
-        auto end_time = std::chrono::steady_clock::now();
+        auto end_time = ExchangeEngine_now(session_mgr_);
         auto latency = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         stats_.recordLatency(latency);
     }
@@ -164,7 +187,7 @@ bool ExchangeEngine::cancelOrder(OrderID id, const std::string& symbol) {
 }
 
 bool ExchangeEngine::modifyOrder(OrderID id, const std::string& symbol, Price new_price, Quantity new_qty, OrderID new_order_id) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = ExchangeEngine_now(session_mgr_);
     bool success = false;
     std::vector<Trade> trades;
 
@@ -183,7 +206,7 @@ bool ExchangeEngine::modifyOrder(OrderID id, const std::string& symbol, Price ne
                         symbol,
                         new_price,
                         new_qty,
-                        std::chrono::system_clock::now(),
+                        ExchangeEngine_now(session_mgr_),
                         client_id
                     });
 
@@ -214,7 +237,7 @@ bool ExchangeEngine::modifyOrder(OrderID id, const std::string& symbol, Price ne
             stats_snap.trades_per_sec
         });
 
-        auto end_time = std::chrono::steady_clock::now();
+        auto end_time = ExchangeEngine_now(session_mgr_);
         auto latency = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         stats_.recordLatency(latency);
     }

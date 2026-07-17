@@ -16,6 +16,8 @@ struct Trade {
     std::chrono::system_clock::time_point timestamp;
     std::string buyer_client_id;
     std::string seller_client_id;
+    Side taker_side;
+    OrderType taker_type;
 };
 
 } // namespace Exchange

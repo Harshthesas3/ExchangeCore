@@ -17,9 +17,11 @@
 
 namespace Exchange {
 
+class SessionManager;
+
 class ExchangeEngine {
 public:
-    ExchangeEngine();
+    explicit ExchangeEngine(std::shared_ptr<SessionManager> session_mgr = nullptr);
     ~ExchangeEngine() = default;
 
     // Symbol management
@@ -56,6 +58,7 @@ private:
 
     mutable std::mutex engine_mutex_;
 
+    std::shared_ptr<SessionManager> session_mgr_;
     std::unordered_map<std::string, OrderBook> order_books_;
     std::unique_ptr<MatchingEngine> matching_engine_;
     Portfolio portfolio_;

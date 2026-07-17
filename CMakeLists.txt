@@ -45,6 +45,12 @@ else()
     target_compile_options(ExchangeCoreLib PRIVATE -Wall -Wextra -Werror -Wno-unused-parameter)
 endif()
 
+# QuantArena Versions
+target_compile_definitions(ExchangeCoreLib PUBLIC 
+    ENGINE_VERSION="1.1.0"
+    GENERATOR_VERSION="1.0.0"
+)
+
 # Define TUI & App Target
 file(GLOB_RECURSE TUI_HEADERS "src/TUI/*.hpp" "src/TUI/*.h")
 file(GLOB_RECURSE TUI_SOURCES "src/TUI/*.cpp")

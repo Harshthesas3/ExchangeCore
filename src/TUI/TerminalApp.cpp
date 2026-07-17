@@ -47,12 +47,13 @@ TerminalApp::TerminalApp(std::shared_ptr<ExchangeEngine> engine, std::shared_ptr
         "Simulation",
         "Benchmark",
         "Portfolio",
-        "Settings"
+        "Settings",
+        "Match Session"
     };
 
     // Prepopulate maps
     for (const auto& item : left_menu_items_) {
-        if (item != "---" && item != "Simulation" && item != "Benchmark" && item != "Portfolio" && item != "Settings") {
+        if (item != "---" && item != "Simulation" && item != "Benchmark" && item != "Portfolio" && item != "Settings" && item != "Match Session") {
             bids_depth_[item] = {};
             asks_depth_[item] = {};
             spreads_[item] = 0;
@@ -129,8 +130,8 @@ void TerminalApp::initUI() {
         Container::Horizontal({btn_cancel_order, btn_cancel_close})
     });
 
-    // --- Simulation controls ---
-    auto btn_sim_toggle = Button("TOGGLE SIMULATOR", [&] {
+    // --- Simulation screen controls (idx 6) ---
+    auto btn_sim_toggle = Button("[TOGGLE SIMULATOR]", [&] {
         if (simulator_->isRunning()) {
             simulator_->stop();
             terminal_log_message_ = "Market simulator stopped.";
@@ -140,17 +141,17 @@ void TerminalApp::initUI() {
         }
         log_timestamp_ = std::chrono::system_clock::now();
     });
-    // BUG 1 FIX: Use class-member vectors so Toggle pointers remain valid
-    // after initUI() returns. Local vectors would be destroyed immediately.
+    // FIX: Use class-member vectors so Toggle pointers remain valid after initUI() returns.
     auto sim_speed_toggle = Toggle(&sim_speeds_, &sim_speed_idx_);
+    sim_screen_comp_ = Container::Vertical({btn_sim_toggle});
 
-    // --- Benchmark controls ---
-    auto btn_run_bench    = Button("RUN BENCHMARK", [&] { runBenchmarkAsync(); });
-    // BUG 1 FIX: Same — use class member bench_sizes_, not a local vector.
+    // --- Benchmark screen controls (idx 7) ---
+    auto btn_run_bench    = Button("[RUN BENCHMARK]", [&] { runBenchmarkAsync(); });
     auto bench_size_toggle = Toggle(&bench_sizes_, &selected_bench_size_);
+    bench_screen_comp_ = Container::Vertical({bench_size_toggle, btn_run_bench});
 
-    // --- Portfolio controls ---
-    auto btn_reset_portfolio = Button("RESET PORTFOLIO", [&] {
+    // --- Settings screen controls (idx 9) — sim speed + portfolio reset ---
+    auto btn_reset_portfolio = Button("[RESET PORTFOLIO]", [&] {
         engine_->reset();
         portfolio_ = engine_->getPortfolio();
         stats_     = engine_->getStatistics();
@@ -159,28 +160,44 @@ void TerminalApp::initUI() {
         terminal_log_message_ = "Portfolio and engine statistics reset successfully.";
         log_timestamp_ = std::chrono::system_clock::now();
     });
+    settings_screen_comp_ = Container::Vertical({sim_speed_toggle, btn_reset_portfolio});
 
-    // BUG 3 FIX: Gate each modal component subtree with Maybe() so it is
-    // excluded from FTXUI's focus traversal when the modal is not open.
-    // Without this, Tab while on the dashboard silently advances focus into
-    // invisible modal inputs, swallowing the event and breaking panel cycling.
-    auto buy_modal_gated = Maybe(buy_modal_comp,
-        [&] { return active_modal_ == ModalType::Buy; });
-    auto sell_modal_gated = Maybe(sell_modal_comp,
-        [&] { return active_modal_ == ModalType::Sell; });
-    auto cancel_modal_gated = Maybe(cancel_modal_comp,
-        [&] { return active_modal_ == ModalType::CancelList; });
+    // --- Match Session screen controls (idx 10) ---
+    auto input_match_seed = Input(&input_match_seed_, "Paste hex seed (16/32/64 chars)");
+    auto btn_start_match = Button("[START QUANTARENA MATCH]", [&] { startMatchSession(); });
+    auto btn_end_match   = Button("[END MATCH]",              [&] { endMatchSession();   });
+    auto btn_export_match = Button("[EXPORT QUANTARENA LOG]",  [&] { exportQuantArenaLog(); });
+    match_screen_comp_ = Container::Vertical({input_match_seed, btn_start_match, btn_end_match, btn_export_match});
 
-    // Top container — modal subtrees only participate when their modal is open
+    // --- Post Match Summary Modal ---
+    auto btn_export_log    = Button("[EXPORT QUANTARENA LOG]", [&] { exportQuantArenaLog(); });
+    auto btn_close_summary = Button("[CLOSE]",                 [&] { active_modal_ = ModalType::None; });
+    auto summary_modal_comp = Container::Vertical({
+        Container::Horizontal({btn_export_log, btn_close_summary})
+    });
+
+    // Gate each modal subtree: excluded from focus traversal when modal is closed.
+    auto buy_modal_gated    = Maybe(buy_modal_comp,     [&] { return active_modal_ == ModalType::Buy; });
+    auto sell_modal_gated   = Maybe(sell_modal_comp,    [&] { return active_modal_ == ModalType::Sell; });
+    auto cancel_modal_gated = Maybe(cancel_modal_comp,  [&] { return active_modal_ == ModalType::CancelList; });
+    auto summary_modal_gated = Maybe(summary_modal_comp,[&] { return active_modal_ == ModalType::PostMatchSummary; });
+
+    // Gate each screen's interactive controls — only in focus tree when that screen is active
+    // and no modal is open. This prevents Tab from cycling invisible controls.
+    auto sim_gated      = Maybe(sim_screen_comp_,      [&] { return active_modal_ == ModalType::None && selected_left_menu_ == 6;  });
+    auto bench_gated    = Maybe(bench_screen_comp_,    [&] { return active_modal_ == ModalType::None && selected_left_menu_ == 7;  });
+    auto settings_gated = Maybe(settings_screen_comp_, [&] { return active_modal_ == ModalType::None && selected_left_menu_ == 9;  });
+    auto match_gated    = Maybe(match_screen_comp_,    [&] { return active_modal_ == ModalType::None && selected_left_menu_ == 10; });
+
     auto main_container = Container::Vertical({
         buy_modal_gated,
         sell_modal_gated,
         cancel_modal_gated,
-        btn_sim_toggle,
-        sim_speed_toggle,
-        btn_run_bench,
-        bench_size_toggle,
-        btn_reset_portfolio
+        summary_modal_gated,
+        sim_gated,
+        bench_gated,
+        settings_gated,
+        match_gated,
     });
 
     auto renderer = Renderer(main_container, [&] {
@@ -288,6 +305,7 @@ void TerminalApp::initUI() {
         if (event == ftxui::Event::F3) { openCancelModal();          return true; }
         if (event == ftxui::Event::F4) { selected_left_menu_ = 7;   return true; } // Benchmark
         if (event == ftxui::Event::F5) { selected_left_menu_ = 8;   return true; } // Portfolio
+        if (event == ftxui::Event::F6) { selected_left_menu_ = 10;  return true; } // Match Session
 
         // --- Sidebar arrow-key navigation (only when sidebar has focus) ---
         if (active_focus_panel_ == 0) {
@@ -598,14 +616,20 @@ Element TerminalApp::renderLeftPanel() {
         menu_elems.push_back(element);
     }
 
-    std::string focus_desc = (active_focus_panel_ == 0) ? "[FOCUSED]" : "[TAB to focus]";
+    // FIX: Sidebar was 20 chars wide — header "NAVIGATION [TAB to focus]" (25 chars)
+    // overflowed, wrapping to 2 lines and clipping the last items (including Match Session).
+    // Fix: shorten focus label and widen the panel to 24 chars.
+    bool sidebar_active = (active_focus_panel_ == 0);
+    auto nav_header = hbox({
+        text(sidebar_active ? "\u25b6 NAVIGATION" : "  NAVIGATION") | bold | color(sidebar_active ? Theme::InfoCyan : Theme::TextMuted),
+    });
 
     return vbox({
-        text(" NAVIGATION " + focus_desc) | bold | color(Theme::TextLight),
+        nav_header,
         separator(),
         vbox(std::move(menu_elems)),
         filler()
-    }) | size(WIDTH, EQUAL, 20) | borderStyled(Theme::Border);
+    }) | size(WIDTH, EQUAL, 24) | borderStyled(Theme::Border);
 }
 
 Element TerminalApp::renderCenterPanel() {
@@ -687,20 +711,20 @@ Element TerminalApp::renderCenterPanel() {
     
     // Simulation Screen
     if (selected_left_menu_ == 6) {
-        std::string sim_state = simulator_->isRunning() ? "RUNNING" : "STOPPED";
+        std::string sim_state = simulator_->isRunning() ? "\u25cf RUNNING" : "\u25cb STOPPED";
         auto color_mode = simulator_->isRunning() ? Theme::ProfitGreen : Theme::LossRed;
 
         return vbox({
             text(" MARKET SIMULATOR CONTROL ") | bold | color(Theme::TextLight),
             separator(),
             vbox({
-                hbox({text("Simulator Status: "), text(sim_state) | bold | color(color_mode)}),
-                vbox({
-                    text("Toggle simulation state:"),
-                    text("Press the button below to start/stop the bots.") | color(Theme::TextMuted),
-                    separator(),
-                    text("Press Enter on [TOGGLE SIMULATOR] to change state") | color(Theme::WarningYellow)
-                }) | borderStyled(Theme::Border),
+                hbox({text("Status: "), text(sim_state) | bold | color(color_mode)}),
+                separator(),
+                text("Press [TOGGLE SIMULATOR] to start or stop the bot market maker:") | color(Theme::TextMuted),
+                sim_screen_comp_->Render() | borderStyled(Theme::Border),
+                separator(),
+                text("Simulator speed (adjusted in Settings):") | color(Theme::TextMuted),
+                hbox({text("  Current: "), text(sim_speeds_[sim_speed_idx_]) | bold | color(Theme::InfoCyan)}),
                 filler()
             }) | flex
         }) | borderStyled(Theme::Border);
@@ -725,8 +749,8 @@ Element TerminalApp::renderCenterPanel() {
             text(" ENGINE PERFORMANCE BENCHMARK ") | bold | color(Theme::TextLight),
             separator(),
             vbox({
-                text("Select number of random orders to run and click [RUN BENCHMARK]."),
-                text("This executes inside a background thread without blocking the TUI.") | color(Theme::TextMuted),
+                text("Select order count, then press [RUN BENCHMARK]:") | color(Theme::TextMuted),
+                bench_screen_comp_->Render() | borderStyled(Theme::Border),
                 separator(),
                 benchmark_running_ ? vbox({
                     text(prog_ss.str()) | bold | color(Theme::InfoCyan),
@@ -824,10 +848,37 @@ Element TerminalApp::renderCenterPanel() {
             text(" ENGINE SETTINGS ") | bold | color(Theme::TextLight),
             separator(),
             vbox({
-                text("Simulator speed:") | bold,
+                text("Simulator speed  (Tab to toggle, Enter to confirm):") | bold,
                 text("Adjust how rapidly simulated bots submit random orders.") | color(Theme::TextMuted),
                 separator(),
-                text("Press Enter on [RESET PORTFOLIO] to reset all cash/trades/positions.") | color(Theme::WarningYellow),
+                settings_screen_comp_->Render() | borderStyled(Theme::Border),
+                separator(),
+                text("[RESET PORTFOLIO] wipes all cash, positions, and trade history.") | color(Theme::WarningYellow),
+                filler()
+            }) | flex
+        }) | borderStyled(Theme::Border);
+    }
+
+    // Match Session Screen
+    if (selected_left_menu_ == 10) {
+        std::string status_text = match_running_
+            ? ("\u25cf MATCH RUNNING  |  Seed: " + input_match_seed_)
+            : "\u25cb No match session active.";
+        auto status_color = match_running_ ? Theme::ProfitGreen : Theme::TextMuted;
+
+        return vbox({
+            text(" QUANTARENA MATCH SESSION ") | bold | color(Theme::TextLight),
+            separator(),
+            vbox({
+                text("Paste your QuantArena match seed below (16, 32, or 64 hex chars):") | color(Theme::TextMuted),
+                text("Whitespace and 0x prefix are stripped automatically.") | color(Theme::TextMuted),
+                separator(),
+                match_screen_comp_->Render() | borderStyled(Theme::Border),
+                separator(),
+                match_error_msg_.empty()
+                    ? emptyElement()
+                    : text(" \u2717 " + match_error_msg_) | color(Theme::LossRed),
+                text(status_text) | bold | color(status_color),
                 filler()
             }) | flex
         }) | borderStyled(Theme::Border);
@@ -947,9 +998,10 @@ Element TerminalApp::renderFooter() {
         text(" F1 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Buy  "),
         text(" F2 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Sell  "),
         text(" F3 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Cancel  "),
-        text(" F4 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Benchmark  "),
+        text(" F4 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Bench  "),
         text(" F5 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Portfolio  "),
-        text(" TAB ") | bgcolor(Theme::ActiveHeaderBg) | color(Theme::TextLight), text(" Switch Panel  "),
+        text(" F6 ") | bgcolor(Theme::SelectionBlue) | color(Theme::TextLight), text(" Match  "),
+        text(" TAB ") | bgcolor(Theme::ActiveHeaderBg) | color(Theme::TextLight), text(" Panel  "),
         filler(),
         text(" Q ") | bgcolor(Theme::LossRed) | color(Theme::TextLight), text(" Quit ")
     }) | borderStyled(Theme::Border);
@@ -1008,7 +1060,117 @@ Element TerminalApp::renderModalOverlay() {
         }) | size(WIDTH, EQUAL, 60) | borderStyled(Theme::Border) | bgcolor(Theme::Surface);
     }
 
+    if (active_modal_ == ModalType::PostMatchSummary) {
+        return vbox({
+            text(" POST-MATCH SUMMARY ") | bold | color(Theme::WarningYellow) | center,
+            separator(),
+            text("The QuantArena match simulation has ended.") | center,
+            text("You can now export the deterministic trade log to disk.") | center,
+            separator(),
+            match_exported_ ? text("Export Successful!") | color(Theme::ProfitGreen) | center
+                            : text("Ready to export.") | color(Theme::TextMuted) | center,
+            separator(),
+            text("Press [EXPORT QUANTARENA LOG] button to write trades.jsonl") | color(Theme::TextMuted) | center,
+            text("Press [CLOSE] to return to terminal.") | color(Theme::TextMuted) | center
+        }) | size(WIDTH, EQUAL, 60) | borderStyled(Theme::Border) | bgcolor(Theme::Surface);
+    }
+
     return emptyElement();
+}
+
+void TerminalApp::startMatchSession() {
+    // Strip whitespace and optional 0x
+    std::string seed = input_match_seed_;
+    seed.erase(std::remove_if(seed.begin(), seed.end(), ::isspace), seed.end());
+    if (seed.starts_with("0x") || seed.starts_with("0X")) {
+        seed = seed.substr(2);
+    }
+
+    // Validate
+    if (seed.length() != 16 && seed.length() != 32 && seed.length() != 64) {
+        match_error_msg_ = "Invalid seed: Must be 16, 32, or 64 hex chars.";
+        return;
+    }
+    for (char c : seed) {
+        if (!std::isxdigit(c)) {
+            match_error_msg_ = "Invalid seed: Contains non-hex characters.";
+            return;
+        }
+    }
+
+    match_error_msg_ = "";
+
+    // Stop existing simulator
+    if (simulator_->isRunning()) {
+        simulator_->stop();
+    }
+
+    // Unregister old listener
+    engine_->unregisterListener(shared_from_this());
+
+    // Create session config
+    SessionConfig config;
+    config.match_id = "UI-MATCH-" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
+    config.seed_hex = seed;
+    config.opens_at = formatTimePoint(std::chrono::system_clock::now());
+    for (const auto& sym : config.symbols) {
+        config.symbol_universe.insert(sym);
+    }
+
+    // Re-instantiate
+    session_mgr_ = std::make_shared<SessionManager>(config);
+    engine_ = std::make_shared<ExchangeEngine>(session_mgr_);
+    simulator_ = std::make_shared<MarketSimulator>(*engine_, session_mgr_);
+
+    // Register new listener
+    engine_->registerListener(shared_from_this());
+
+    // Reset UI state
+    portfolio_ = engine_->getPortfolio();
+    stats_ = engine_->getStatistics();
+    recent_trades_.clear();
+    user_orders_.clear();
+    
+    // Create exporter
+    exporter_ = std::make_shared<QuantArenaExporter>(session_mgr_, "./quantarena_exports/" + config.match_id);
+    engine_->registerListener(exporter_); // Exporter listens for trades
+
+    match_running_ = true;
+    match_exported_ = false;
+    terminal_log_message_ = "QuantArena Match Started. Seed: " + seed;
+    log_timestamp_ = std::chrono::system_clock::now();
+
+    // Start simulator
+    simulator_->start();
+}
+
+void TerminalApp::endMatchSession() {
+    if (!match_running_) return;
+
+    if (simulator_->isRunning()) {
+        simulator_->stop();
+    }
+
+    match_running_ = false;
+    match_end_time_ = session_mgr_->now();
+    terminal_log_message_ = "QuantArena Match Ended.";
+    log_timestamp_ = std::chrono::system_clock::now();
+
+    active_modal_ = ModalType::PostMatchSummary;
+}
+
+void TerminalApp::exportQuantArenaLog() {
+    if (exporter_) {
+        // Finalize config
+        auto& config = session_mgr_->getConfig();
+        config.closes_at = formatTimePoint(match_end_time_);
+        config.capital = portfolio_.getCash();
+        
+        exporter_->finishExport();
+        match_exported_ = true;
+        terminal_log_message_ = "QuantArena Log Exported to ./quantarena_exports/" + config.match_id;
+        log_timestamp_ = std::chrono::system_clock::now();
+    }
 }
 
 } // namespace Exchange::TUI

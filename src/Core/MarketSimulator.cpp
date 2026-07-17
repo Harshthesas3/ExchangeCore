@@ -1,11 +1,12 @@
 #include "Core/MarketSimulator.hpp"
+#include "Core/SessionManager.hpp"
 #include <chrono>
 #include <algorithm>
 
 namespace Exchange {
 
-MarketSimulator::MarketSimulator(ExchangeEngine& engine)
-    : engine_(engine) {
+MarketSimulator::MarketSimulator(ExchangeEngine& engine, std::shared_ptr<SessionManager> session_mgr)
+    : engine_(engine), session_mgr_(session_mgr) {
     ref_prices_["AAPL"] = 150.0;
     ref_prices_["MSFT"] = 300.0;
     ref_prices_["GOOG"] = 100.0;
@@ -43,19 +44,40 @@ void MarketSimulator::run() {
     std::uniform_real_distribution<double> action_dist(0.0, 1.0);
     std::uniform_int_distribution<int> qty_dist(5, 50);
 
+    auto get_rand = [&]() -> uint64_t {
+        if (session_mgr_ && session_mgr_->isMatchMode()) {
+            return session_mgr_->nextRandom();
+        }
+        return rng_();
+    };
+
+    auto get_now = [&]() -> std::chrono::system_clock::time_point {
+        if (session_mgr_) {
+            return session_mgr_->now();
+        }
+        return std::chrono::system_clock::now();
+    };
+
     while (running_) {
         // Sleep for a random short duration to throttle simulator activity
-        std::this_thread::sleep_for(std::chrono::milliseconds(10 + (rng_() % 40)));
+        if (!session_mgr_ || !session_mgr_->isMatchMode()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10 + (get_rand() % 40)));
+        } else {
+            // In match mode, sleep briefly to let other threads (like the TUI rendering thread) run,
+            // but keep the latency extremely low (e.g. 1ms) as requested.
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
 
-        std::string symbol = symbols[sym_dist(rng_)];
+        std::string symbol = symbols[sym_dist(rng_)]; // We'll manually map this to get_rand() for determinism
+        symbol = symbols[get_rand() % symbols.size()];
         double ref_price = ref_prices_[symbol];
 
         // Random walk step (-0.05% to +0.05%)
-        double price_change_pct = std::uniform_real_distribution<double>(-0.0005, 0.0005)(rng_);
+        double price_change_pct = -0.0005 + (get_rand() % 10000) / 10000000.0;
         ref_price *= (1.0 + price_change_pct);
         ref_prices_[symbol] = ref_price;
 
-        double action = action_dist(rng_);
+        double action = (get_rand() % 100) / 100.0;
 
         if (action < 0.10) {
             // Cancel oldest active bot order
@@ -67,8 +89,8 @@ void MarketSimulator::run() {
             }
         } else if (action < 0.25) {
             // Submit market order (forces trades)
-            Side side = (rng_() % 2 == 0) ? Side::Buy : Side::Sell;
-            Quantity qty = qty_dist(rng_);
+            Side side = (get_rand() % 2 == 0) ? Side::Buy : Side::Sell;
+            Quantity qty = 5 + (get_rand() % 46);
 
             auto order = std::make_shared<Order>();
             order->id = next_bot_order_id_++;
@@ -77,21 +99,21 @@ void MarketSimulator::run() {
             order->type = OrderType::Market;
             order->price = 0; // Price ignored for market orders
             order->qty = qty;
-            order->timestamp = std::chrono::system_clock::now();
-            order->client_id = "BOT_" + std::to_string((rng_() % 5) + 1);
+            order->timestamp = get_now();
+            order->client_id = "BOT_" + std::to_string((get_rand() % 5) + 1);
 
             engine_.submitOrder(order);
         } else {
             // Submit limit order
-            Side side = (rng_() % 2 == 0) ? Side::Buy : Side::Sell;
-            Quantity qty = qty_dist(rng_);
+            Side side = (get_rand() % 2 == 0) ? Side::Buy : Side::Sell;
+            Quantity qty = 5 + (get_rand() % 46);
             Price price = 0;
 
             if (side == Side::Buy) {
-                double discount = std::uniform_real_distribution<double>(0.0001, 0.0015)(rng_);
+                double discount = 0.0001 + (get_rand() % 140) / 100000.0;
                 price = doubleToPrice(ref_price * (1.0 - discount));
             } else {
-                double premium = std::uniform_real_distribution<double>(0.0001, 0.0015)(rng_);
+                double premium = 0.0001 + (get_rand() % 140) / 100000.0;
                 price = doubleToPrice(ref_price * (1.0 + premium));
             }
 
@@ -104,8 +126,8 @@ void MarketSimulator::run() {
             order->type = OrderType::Limit;
             order->price = price;
             order->qty = qty;
-            order->timestamp = std::chrono::system_clock::now();
-            order->client_id = "BOT_" + std::to_string((rng_() % 5) + 1);
+            order->timestamp = get_now();
+            order->client_id = "BOT_" + std::to_string((get_rand() % 5) + 1);
 
             engine_.submitOrder(order);
 

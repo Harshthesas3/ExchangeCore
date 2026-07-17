@@ -70,6 +70,7 @@ TUI (FTXUI)  ──►  API (Events + Listeners)  ──►  Core Engine  ──
 - **Order Entry Modals** — F1 Buy / F2 Sell with Limit and Market order types
 - **Cancel Orders Modal** — F3 to view and cancel any active user order
 - **Professional Dark Theme** — Custom RGB color palette, no rainbow colors
+- **QuantArena Compatibility** — Fully compatible with QuantArena match spec (deterministic seeding, simulated clock, custom SHA-256 validation, and JSONL log exporting)
 - <img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/afb2d9b1-9217-4594-8c9e-3dee32da8cdf" />
 
 
@@ -135,6 +136,7 @@ cmake --build build --config Release
 | `F3`  | Open active order cancellation list   |
 | `F4`  | Switch to Benchmark screen            |
 | `F5`  | Switch to Portfolio screen            |
+| `F6`  | Switch to Match Session screen        |
 | `ESC` | Close modal / dialog                  |
 | `Q`   | Quit                                  |
 

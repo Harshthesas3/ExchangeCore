@@ -233,7 +233,7 @@ TEST(PortfolioTest, LedgerUpdates) {
     EXPECT_EQ(portfolio.getPositionQty("AAPL"), 0);
 
     // Test BUY execution
-    Trade t1{1, 10, 20, "AAPL", doubleToPrice(150.0), 10, std::chrono::system_clock::now(), "USER", "BOT"};
+    Trade t1{1, 10, 20, "AAPL", doubleToPrice(150.0), 10, std::chrono::system_clock::now(), "USER", "BOT", Side::Buy, OrderType::Limit};
     portfolio.handleTrade(t1, "USER"); // We bought
 
     EXPECT_DOUBLE_EQ(portfolio.getCash(), 10000.0 - (10 * 150.0));
@@ -241,7 +241,7 @@ TEST(PortfolioTest, LedgerUpdates) {
     EXPECT_DOUBLE_EQ(portfolio.getCostBasis("AAPL"), 150.0);
 
     // Test another BUY to verify weighted average cost basis
-    Trade t2{2, 11, 21, "AAPL", doubleToPrice(160.0), 10, std::chrono::system_clock::now(), "USER", "BOT"};
+    Trade t2{2, 11, 21, "AAPL", doubleToPrice(160.0), 10, std::chrono::system_clock::now(), "USER", "BOT", Side::Buy, OrderType::Limit};
     portfolio.handleTrade(t2, "USER"); // We bought 10 more at 160
 
     EXPECT_EQ(portfolio.getPositionQty("AAPL"), 20);
@@ -252,7 +252,7 @@ TEST(PortfolioTest, LedgerUpdates) {
     EXPECT_DOUBLE_EQ(portfolio.getUnrealizedPnL(), 20 * (157.0 - 155.0));
 
     // Test SELL execution to realize PnL
-    Trade t3{3, 30, 12, "AAPL", doubleToPrice(165.0), 15, std::chrono::system_clock::now(), "BOT", "USER"};
+    Trade t3{3, 30, 12, "AAPL", doubleToPrice(165.0), 15, std::chrono::system_clock::now(), "BOT", "USER", Side::Buy, OrderType::Limit};
     portfolio.handleTrade(t3, "USER"); // We sold 15 shares at 165
 
     EXPECT_EQ(portfolio.getPositionQty("AAPL"), 5);
@@ -264,7 +264,7 @@ TEST(PortfolioTest, ShortSellingLedger) {
     Portfolio portfolio(10000.0);
 
     // Test SELL to open short position
-    Trade t1{1, 10, 20, "AAPL", doubleToPrice(150.0), 10, std::chrono::system_clock::now(), "BOT", "USER"};
+    Trade t1{1, 10, 20, "AAPL", doubleToPrice(150.0), 10, std::chrono::system_clock::now(), "BOT", "USER", Side::Sell, OrderType::Limit};
     portfolio.handleTrade(t1, "USER"); // We sold short 10 shares
 
     EXPECT_EQ(portfolio.getPositionQty("AAPL"), -10);
@@ -276,7 +276,7 @@ TEST(PortfolioTest, ShortSellingLedger) {
     EXPECT_DOUBLE_EQ(portfolio.getUnrealizedPnL(), -10 * (140.0 - 150.0)); // +100
 
     // BUY to cover
-    Trade t2{2, 30, 40, "AAPL", doubleToPrice(135.0), 10, std::chrono::system_clock::now(), "USER", "BOT"};
+    Trade t2{2, 30, 40, "AAPL", doubleToPrice(135.0), 10, std::chrono::system_clock::now(), "USER", "BOT", Side::Sell, OrderType::Limit};
     portfolio.handleTrade(t2, "USER"); // Covered completely
 
     EXPECT_EQ(portfolio.getPositionQty("AAPL"), 0);
@@ -289,8 +289,8 @@ TEST(StatisticsTest, MathAccuracy) {
     stats.recordOrderReceived();
     stats.recordOrderReceived();
 
-    Trade t1{1, 10, 20, "AAPL", doubleToPrice(100.0), 10, std::chrono::system_clock::now(), "U1", "U2"};
-    Trade t2{2, 11, 21, "AAPL", doubleToPrice(110.0), 20, std::chrono::system_clock::now(), "U1", "U3"};
+    Trade t1{1, 10, 20, "AAPL", doubleToPrice(100.0), 10, std::chrono::system_clock::now(), "U1", "U2", Side::Buy, OrderType::Limit};
+    Trade t2{2, 11, 21, "AAPL", doubleToPrice(110.0), 20, std::chrono::system_clock::now(), "U1", "U3", Side::Buy, OrderType::Limit};
 
     stats.recordTrade(t1);
     stats.recordTrade(t2);
